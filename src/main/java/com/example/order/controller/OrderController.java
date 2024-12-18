@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/orders")
+@RequestMapping("/api/order-manangement")
 
 public class OrderController {
 
@@ -26,7 +26,7 @@ public class OrderController {
         return ResponseEntity.ok("Order received successfully");
     }
 
-    @GetMapping("/export")
+    @GetMapping("/orders")
     public ResponseEntity<List<OrderResponseDTO>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());
     }
