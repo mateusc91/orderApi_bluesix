@@ -1,6 +1,6 @@
 package com.example.order.service;
 
-import com.example.order.OrderStatus;
+import com.example.order.utils.OrderStatus;
 import com.example.order.dto.OrderItemDTO;
 import com.example.order.dto.request.OrderRequestDTO;
 import com.example.order.dto.response.OrderReceiveResponseDTO;
@@ -8,7 +8,9 @@ import com.example.order.dto.response.OrderResponseDTO;
 import com.example.order.entity.Order;
 import com.example.order.entity.OrderItem;
 import com.example.order.repository.OrderRepository;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    @Getter
     private final Map<String, Boolean> processedOrdersCached = new ConcurrentHashMap<>();
     private String responseMessage = "";
 
@@ -33,9 +36,9 @@ public class OrderService {
 
         if (existingOrder) {
             responseMessage = "Order exists and has been processed already: " + orderRequest.getExternalOrderId();
-            log.warn(responseMessage.toString());
+            log.warn(responseMessage);
         }
-        return OrderReceiveResponseDTO.toOrderReceiveResponseDTO(responseMessage.toString());
+        return OrderReceiveResponseDTO.toOrderReceiveResponseDTO(responseMessage);
     }
 
     @Cacheable(value = "orderCache", key = "#orderRequest.externalOrderId", unless = "#result == false")
@@ -87,7 +90,8 @@ public class OrderService {
     }
 
     public List<OrderResponseDTO> getAllOrders() {
-        return orderRepository.findAll().stream().map(order -> OrderResponseDTO.builder()
+        List<Order> all = orderRepository.findAll();
+        return all.stream().map(order -> OrderResponseDTO.builder()
                 .externalOrderId(order.getExternalOrderId())
                 .totalValue(order.getTotalValue())
                 .status(order.getStatus())
