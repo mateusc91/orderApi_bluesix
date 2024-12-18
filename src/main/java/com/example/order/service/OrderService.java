@@ -3,6 +3,7 @@ package com.example.order.service;
 import com.example.order.OrderStatus;
 import com.example.order.dto.OrderItemDTO;
 import com.example.order.dto.request.OrderRequestDTO;
+import com.example.order.dto.response.OrderReceiveResponseDTO;
 import com.example.order.dto.response.OrderResponseDTO;
 import com.example.order.entity.Order;
 import com.example.order.entity.OrderItem;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -23,31 +25,41 @@ import java.util.stream.Collectors;
 public class OrderService {
 
     private final OrderRepository orderRepository;
+    private final Map<String, Boolean> processedOrdersCached = new ConcurrentHashMap<>();
+    private String responseMessage = "";
 
-    private static final ConcurrentHashMap<String, Boolean> processedOrdersCached = new ConcurrentHashMap<>();
-
-    @Cacheable(value = "orderCache", key = "#orderRequest.externalOrderId", unless = "#result == null || #result == false")
-    public void receiveOrder(OrderRequestDTO orderRequest) {
+    public OrderReceiveResponseDTO receiveOrder(OrderRequestDTO orderRequest) {
         boolean existingOrder = checkExistingOrder(orderRequest);
+
         if (existingOrder) {
-            log.warn("Order is a duplicate and already processed: {}", orderRequest.getExternalOrderId());
+            responseMessage = "Order exists and has been processed already: " + orderRequest.getExternalOrderId();
+            log.warn(responseMessage.toString());
         }
-        checkExistingOrder(orderRequest);
+        return OrderReceiveResponseDTO.toOrderReceiveResponseDTO(responseMessage.toString());
     }
 
-    private boolean checkExistingOrder(OrderRequestDTO orderRequest) {
-        if (processedOrdersCached.containsKey(orderRequest.getExternalOrderId()) ||
-                orderRepository.existsByExternalOrderId(orderRequest.getExternalOrderId())) {
+    @Cacheable(value = "orderCache", key = "#orderRequest.externalOrderId", unless = "#result == false")
+    public boolean checkExistingOrder(OrderRequestDTO orderRequest) {
+        log.info("Checking if order exists: {}", orderRequest.getExternalOrderId());
+
+        if (processedOrdersCached.containsKey(orderRequest.getExternalOrderId())) {
+            return true;
+        }
+
+        boolean orderExistsInDb = orderRepository.existsByExternalOrderId(orderRequest.getExternalOrderId());
+        if (orderExistsInDb) {
+            processedOrdersCached.put(orderRequest.getExternalOrderId(), true);
             return true;
         }
 
         processedOrdersCached.put(orderRequest.getExternalOrderId(), true);
         processOrder(orderRequest);
-
         return false;
     }
 
-    private void processOrder (OrderRequestDTO orderRequest){
+    private void processOrder(OrderRequestDTO orderRequest) {
+        log.info("Processing order: {}", orderRequest.getExternalOrderId());
+
         Double totalValue = orderRequest.getItems()
                 .stream()
                 .mapToDouble(item -> item.getQuantity() * item.getPrice())
@@ -69,8 +81,9 @@ public class OrderService {
                 .build();
 
         order.getItems().forEach(item -> item.setOrder(order));
-        log.info("Order processed: " + orderRequest.getExternalOrderId());
+        responseMessage = "Order processed successfully: " + orderRequest.getExternalOrderId();
         orderRepository.save(order);
+        log.info("Order processed and saved: {}", orderRequest.getExternalOrderId());
     }
 
     public List<OrderResponseDTO> getAllOrders() {

@@ -1,6 +1,7 @@
 package com.example.order.controller;
 
 import com.example.order.dto.request.OrderRequestDTO;
+import com.example.order.dto.response.OrderReceiveResponseDTO;
 import com.example.order.dto.response.OrderResponseDTO;
 import com.example.order.service.OrderService;
 import jakarta.validation.Valid;
@@ -21,9 +22,8 @@ public class OrderController {
     }
 
     @PostMapping("/receive")
-    public ResponseEntity<String> receiveOrder(@Valid @RequestBody OrderRequestDTO request) {
-        orderService.receiveOrder(request);
-        return ResponseEntity.ok("Order received successfully");
+    public ResponseEntity<OrderReceiveResponseDTO> receiveOrder(@Valid @RequestBody OrderRequestDTO request) {
+        return ResponseEntity.ok(orderService.receiveOrder(request));
     }
 
     @GetMapping("/orders")
