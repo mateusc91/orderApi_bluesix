@@ -1,5 +1,6 @@
 package com.example.order.service;
 
+import com.example.order.OrderStatus;
 import com.example.order.dto.OrderItemDTO;
 import com.example.order.dto.request.OrderRequestDTO;
 import com.example.order.dto.response.OrderResponseDTO;
@@ -27,22 +28,23 @@ public class OrderService {
 
     @Cacheable(value = "orderCache", key = "#orderRequest.externalOrderId", unless = "#result == null || #result == false")
     public void receiveOrder(OrderRequestDTO orderRequest) {
-        boolean processed = checkOrder(orderRequest);
-        if (!processed) {
-            log.warn("Order is a duplicate: {}", orderRequest.getExternalOrderId());
+        boolean existingOrder = checkExistingOrder(orderRequest);
+        if (existingOrder) {
+            log.warn("Order is a duplicate and already processed: {}", orderRequest.getExternalOrderId());
         }
-        checkOrder(orderRequest);
+        checkExistingOrder(orderRequest);
     }
 
-    private boolean checkOrder(OrderRequestDTO orderRequest) {
-        if (processedOrdersCached.containsKey(orderRequest.getExternalOrderId())) {
-            return false;
+    private boolean checkExistingOrder(OrderRequestDTO orderRequest) {
+        if (processedOrdersCached.containsKey(orderRequest.getExternalOrderId()) ||
+                orderRepository.existsByExternalOrderId(orderRequest.getExternalOrderId())) {
+            return true;
         }
 
         processedOrdersCached.put(orderRequest.getExternalOrderId(), true);
         processOrder(orderRequest);
 
-        return true;
+        return false;
     }
 
     private void processOrder (OrderRequestDTO orderRequest){
@@ -54,7 +56,7 @@ public class OrderService {
         Order order = Order.builder()
                 .externalOrderId(orderRequest.getExternalOrderId())
                 .totalValue(totalValue)
-                .status("PENDING")
+                .status(OrderStatus.PROCESSED.name())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .items(orderRequest.getItems().stream()
