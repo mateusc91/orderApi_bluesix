@@ -16,11 +16,18 @@ Bluesix/NTT API Java challenge
 
 
 ## How to run
-Ensure you have docker installed in your machine before running the application.
+Ensure you have docker installed on your machine before running the application.
 
-- run ```docker-compose up --build``` in the root folder of the project. By default, the API will be exposed to port 8082
+### Locally
+- run command ```docker run --name redis-container -p 6379:6379 -d redis``` to have a redis up and running inside a docker container
+- run the application in your IDE. By default, the API will be exposed to port 8082 
 
+### Docker environment
+- run command ```mvn clean package``` and make sure your jar was generated inside the target folder
+- run ```docker-compose up --build``` in the root folder of the project. By default, the API will be exposed to port 8082 and redis on port 6379
 
+### Database
+- H2 Database can be accessed on http://localhost:8082/h2-console
 
 
 ## API Reference
@@ -28,13 +35,13 @@ Ensure you have docker installed in your machine before running the application.
 #### Get all orders
 
 ```http
-  GET /api/orders/export
+  GET /api/order-manangement/orders
 ```
 
 #### Receive an order
 
 ```http
-  POST /api/orders/receive
+  POST /api/order-manangement/receive
 ```
 
 | Parameter | Type     | Description                       |
